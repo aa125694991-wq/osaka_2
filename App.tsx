@@ -1,19 +1,16 @@
-import { db } from './services/firebase'; // 確保路徑正確
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { INITIAL_EVENTS } from './data/scheduleData';
+import { useEffect } from 'react';
+import { uploadItinerary } from './utils/uploadScript'; // 假設你把剛才的 script 存成這個檔案
 
-export const uploadItinerary = async () => {
-  try {
-    const eventsRef = collection(db, 'events'); // 假設你的集合名稱是 events
-    
-    // 使用 Promise.all 同步寫入所有事件
-    await Promise.all(INITIAL_EVENTS.map(event => {
-      // 使用事件的 id 作為 document ID，避免重複
-      return setDoc(doc(eventsRef, event.id), event);
-    }));
+function App() {
+  useEffect(() => {
+    // 只有在開發環境執行，或執行一次後就手動刪除這行
+    uploadItinerary();
+  }, []);
 
-    console.log('所有行程已成功強制寫入 Firebase！');
-  } catch (error) {
-    console.error('寫入失敗：', error);
-  }
-};
+  return (
+    <div>
+      <h1>我的京都行程表</h1>
+      {/* 你的其他組件 */}
+    </div>
+  );
+}
