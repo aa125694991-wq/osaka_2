@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { ScheduleEvent, WeatherInfo, Category, HourlyForecast } from '../types';
 
-const INITIAL_EVENTS: ScheduleEvent[] = [
-  { id: '1', date: '2024-11-15', time: '10:00', title: '抵達關西機場 (KIX)', location: { name: 'Kansai Airport' }, category: 'transport', notes: '搭乘 Haruka前往京都', reservationNumber: 'RES-998877' },
-  { id: '2', date: '2024-11-15', time: '13:00', title: '京都車站拉麵小路', location: { name: 'Kyoto Station' }, category: 'food' },
-  { id: '3', date: '2024-11-15', time: '15:00', title: 'Check-in 飯店', location: { name: 'Piece Hostel Sanjo' }, category: 'accommodation', reservationNumber: 'BK-2024-XYZ' },
-  { id: '4', date: '2024-11-15', time: '16:30', title: '清水寺夕陽', location: { name: 'Kiyomizu-dera' }, category: 'sightseeing', photos: ['https://picsum.photos/400/300'] },
-  { id: '5', date: '2024-11-16', time: '09:00', title: '伏見稻荷大社', location: { name: 'Fushimi Inari' }, category: 'sightseeing' },
-  { id: '6', date: '2024-11-16', time: '12:00', title: '錦市場午餐', location: { name: 'Nishiki Market' }, category: 'food', reservationNumber: 'Lunch-001' },
+// 更新為 2026 年 1 月的日期
+const INITIAL_DATES = [
+  '2026-01-08', // Thu
+  '2026-01-09', // Fri
+  '2026-01-10', // Sat
+  '2026-01-11', // Sun
+  '2026-01-12', // Mon
+  '2026-01-13', // Tue
+  '2026-01-14', // Wed
+  '2026-01-15'  // Thu
 ];
 
-const INITIAL_DATES = ['2024-11-15', '2024-11-16', '2024-11-17', '2024-11-18', '2024-11-19'];
+const INITIAL_EVENTS: ScheduleEvent[] = [
+  { id: '1', date: '2026-01-08', time: '10:00', title: '抵達關西機場 (KIX)', location: { name: 'Kansai Airport' }, category: 'transport', notes: '搭乘 Haruka前往京都', reservationNumber: 'RES-998877' },
+  { id: '2', date: '2026-01-08', time: '13:00', title: '京都車站拉麵小路', location: { name: 'Kyoto Station' }, category: 'food' },
+  { id: '3', date: '2026-01-08', time: '15:00', title: 'Check-in 飯店', location: { name: 'Piece Hostel Sanjo' }, category: 'accommodation', reservationNumber: 'BK-2026-XYZ' },
+  { id: '4', date: '2026-01-08', time: '16:30', title: '清水寺夕陽', location: { name: 'Kiyomizu-dera' }, category: 'sightseeing', photos: ['https://picsum.photos/400/300'] },
+  { id: '5', date: '2026-01-09', time: '09:00', title: '伏見稻荷大社', location: { name: 'Fushimi Inari' }, category: 'sightseeing' },
+  { id: '6', date: '2026-01-09', time: '12:00', title: '錦市場午餐', location: { name: 'Nishiki Market' }, category: 'food', reservationNumber: 'Lunch-001' },
+];
 
 const CATEGORY_COLORS: Record<Category, string> = {
   sightseeing: 'bg-ios-indigo text-white',
@@ -36,17 +46,65 @@ const CATEGORY_ICONS: Record<Category, string> = {
   shopping: 'fa-bag-shopping'
 };
 
-// WMO Weather Codes mapping to FontAwesome icons
-const getWeatherIconByCode = (code?: number) => {
+// 離線預設資料 (萬一 API 完全掛掉時使用 - 冬季數據)
+const OFFLINE_WEATHER_DATA: Record<string, WeatherInfo> = {};
+INITIAL_DATES.forEach(date => {
+  OFFLINE_WEATHER_DATA[date] = {
+    date,
+    condition: 'sunny',
+    conditionCode: 1, // Clear sky
+    tempMax: 8,  // Winter temp
+    tempMin: 2,
+    apparentTempMax: 6,
+    apparentTempMin: 0,
+    currentTemp: 5,
+    precipitationProb: 10,
+    hourly: Array(24).fill(0).map((_, i) => ({
+      time: `${String(i).padStart(2, '0')}:00`,
+      temp: 5,
+      conditionCode: 1,
+      precipitationProb: 0
+    }))
+  };
+});
+
+
+// Helper functions for Weather Icons and Colors
+const getWeatherIconClass = (code?: number) => {
   if (code === undefined) return 'fa-sun';
-  if (code <= 1) return 'fa-sun text-ios-orange'; // Clear
-  if (code <= 3) return 'fa-cloud-sun text-gray-500'; // Partly cloudy
-  if (code <= 48) return 'fa-cloud text-gray-400'; // Fog
-  if (code <= 67) return 'fa-cloud-rain text-ios-blue'; // Rain
-  if (code <= 77) return 'fa-snowflake text-ios-blue'; // Snow
-  if (code <= 82) return 'fa-cloud-showers-heavy text-ios-blue'; // Showers
-  if (code <= 99) return 'fa-bolt text-yellow-500'; // Thunderstorm
+  if (code <= 1) return 'fa-sun'; // Clear
+  if (code <= 3) return 'fa-cloud-sun'; // Partly cloudy
+  if (code <= 48) return 'fa-smog'; // Fog
+  if (code <= 67) return 'fa-cloud-rain'; // Rain
+  if (code <= 77) return 'fa-snowflake'; // Snow
+  if (code <= 82) return 'fa-cloud-showers-heavy'; // Showers
+  if (code <= 99) return 'fa-bolt'; // Thunderstorm
   return 'fa-cloud';
+};
+
+const getWeatherColorClass = (code?: number) => {
+  if (code === undefined) return 'text-gray-400';
+  if (code <= 1) return 'text-yellow-400'; // Sunny - Bright Yellow
+  if (code <= 3) return 'text-orange-400'; // Partly cloudy - Orange
+  if (code <= 48) return 'text-gray-400'; // Fog - Gray
+  if (code <= 67) return 'text-blue-400'; // Rain - Light Blue
+  if (code <= 77) return 'text-cyan-400'; // Snow - Cyan
+  if (code <= 82) return 'text-blue-600'; // Showers - Darker Blue
+  if (code <= 99) return 'text-purple-500'; // Thunder - Purple
+  return 'text-gray-400';
+};
+
+const getWeatherGradientClass = (code?: number) => {
+   if (code === undefined) return 'from-blue-500 to-blue-600';
+   if (code <= 1) return 'from-blue-400 to-blue-600'; // Sunny - Bright Blue Sky
+   if (code <= 3) return 'from-blue-400 to-slate-400'; // Cloudy - Blue to Grey
+   if (code <= 48) return 'from-gray-400 to-gray-600'; // Fog - Grey
+   if (code <= 67) return 'from-slate-600 to-blue-800'; // Rain - Dark Blue Grey
+   if (code <= 77) return 'from-blue-300 to-cyan-100'; // Snow - Icy Blue (Warning: text might need to be dark if bg is light, but let's stick to darker gradients for text-white) -> Let's try Blue to Cyan but dark enough. from-blue-400 to-cyan-600
+   if (code <= 77) return 'from-blue-400 to-cyan-600';
+   if (code <= 82) return 'from-blue-700 to-indigo-900'; // Heavy Rain - Deep Blue
+   if (code <= 99) return 'from-indigo-800 to-purple-900'; // Thunder - Deep Purple
+   return 'from-gray-500 to-gray-700';
 };
 
 const getWeatherDescription = (code?: number) => {
@@ -70,6 +128,8 @@ const ScheduleView: React.FC = () => {
   const [weatherData, setWeatherData] = useState<Record<string, WeatherInfo>>({});
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
+  const [weatherError, setWeatherError] = useState<string>(''); 
+  const [city, setCity] = useState<string>('載入中...'); // Default loading state
   
   // Modal State
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
@@ -81,108 +141,166 @@ const ScheduleView: React.FC = () => {
 
   // --- Weather Logic ---
   useEffect(() => {
-    fetchWeather();
+    fetchWeather(dates);
   }, []);
 
-  // 獨立出 API 請求邏輯，方便重用
-  const fetchWeatherFromApi = async (lat: number, lng: number) => {
+  // Helper: Reverse Geocoding to get City Name
+  const fetchCityName = async (lat: number, lng: number): Promise<string> => {
     try {
-        const response = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,apparent_temperature,precipitation&hourly=temperature_2m,weather_code,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`
-        );
-        const data = await response.json();
-        
-        const newWeatherMap: Record<string, WeatherInfo> = {};
-        const todayStr = new Date().toISOString().split('T')[0];
+      // 使用 BigDataCloud 免費 API (Client-side friendly)
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=zh`);
+      const data = await res.json();
+      // 優先順序：城市 > 行政區 > 地名
+      return data.city || data.locality || data.principalSubdivision || "未知地點";
+    } catch (e) {
+      console.warn("City fetch failed", e);
+      return "未知地點";
+    }
+  };
 
-        // Process Daily Forecast
-        if (data.daily && data.daily.time) {
-          data.daily.time.forEach((date: string, index: number) => {
-             newWeatherMap[date] = {
-                date,
-                condition: 'sunny', // legacy fallback
+  // API 請求邏輯
+  const fetchWeatherFromApi = async (lat: number, lng: number, targetDates: string[]): Promise<Record<string, WeatherInfo>> => {
+    const startDate = targetDates[0];
+    const endDate = targetDates[targetDates.length - 1];
+
+    console.log(`[Weather] Requesting REAL forecast for range: ${startDate} to ${endDate}`);
+
+    const params = new URLSearchParams({
+      latitude: lat.toString(),
+      longitude: lng.toString(),
+      // 強制指定日期範圍
+      start_date: startDate,
+      end_date: endDate,
+      current: 'temperature_2m,weather_code,apparent_temperature,precipitation',
+      hourly: 'temperature_2m,weather_code,precipitation_probability',
+      daily: 'weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max',
+      timezone: 'auto'
+    });
+
+    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      // 如果因為日期太遠導致 400 錯誤，這裡會拋出異常
+      const errorText = await response.text();
+      console.error('[Weather API Error Response]:', errorText);
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('[Weather API Data Received]:', data); // ---> 檢查這裡！
+    
+    const newWeatherMap: Record<string, WeatherInfo> = {};
+    
+    // 嚴格日期匹配模式 (Strict Matching)
+    // 我們只填入 API 真實回傳的日期，絕不進行映射或補位
+    if (data.daily && data.daily.time) {
+      data.daily.time.forEach((apiDate: string, index: number) => {
+         // 只有當 API 回傳的日期存在於我們的行程表中，才處理
+         if (targetDates.includes(apiDate)) {
+             newWeatherMap[apiDate] = {
+                date: apiDate,
+                condition: 'sunny', 
                 conditionCode: data.daily.weather_code[index],
                 tempMax: Math.round(data.daily.temperature_2m_max[index]),
                 tempMin: Math.round(data.daily.temperature_2m_min[index]),
-                precipitationProb: data.daily.precipitation_probability_max[index]
+                apparentTempMax: Math.round(data.daily.apparent_temperature_max[index]),
+                apparentTempMin: Math.round(data.daily.apparent_temperature_min[index]),
+                precipitationProb: data.daily.precipitation_probability_max[index],
+                hourly: [] // 初始化 hourly
              };
-          });
-        }
-
-        // Attach Current Temp & Hourly to Today
-        if (newWeatherMap[todayStr] && data.current) {
-           newWeatherMap[todayStr].currentTemp = Math.round(data.current.temperature_2m);
-           
-           // Map next 24 hours
-           const hourlyData: HourlyForecast[] = [];
-           
-           for(let i = 0; i < 24; i++) {
-              const targetIndex = i + new Date().getHours(); 
-              if (data.hourly && data.hourly.time[targetIndex]) {
-                 const timeStr = data.hourly.time[targetIndex].split('T')[1].slice(0, 5);
-                 hourlyData.push({
-                    time: timeStr,
-                    temp: Math.round(data.hourly.temperature_2m[targetIndex]),
-                    conditionCode: data.hourly.weather_code[targetIndex],
-                    precipitationProb: data.hourly.precipitation_probability[targetIndex]
-                 });
-              }
-           }
-           newWeatherMap[todayStr].hourly = hourlyData;
-        }
-
-        setWeatherData(newWeatherMap);
-        
-        // Cache it
-        localStorage.setItem('weather_cache', JSON.stringify({
-          data: newWeatherMap,
-          timestamp: Date.now()
-        }));
-
-     } catch (error) {
-        console.error("Weather API fetch failed", error);
-     } finally {
-        setIsWeatherLoading(false);
-     }
-  };
-
-  const fetchWeather = async () => {
-    // 1. Check Cache (Expires in 30 minutes)
-    const cached = localStorage.getItem('weather_cache');
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      const now = Date.now();
-      if (now - timestamp < 30 * 60 * 1000) {
-        setWeatherData(data);
-        return;
-      }
+         }
+      });
     }
 
+    // 處理 Hourly Data (因為 API 回傳的是所有天數的大陣列，需要依日期切分)
+    if (data.hourly && data.hourly.time) {
+        data.hourly.time.forEach((timeStr: string, index: number) => {
+            const datePart = timeStr.split('T')[0];
+            const timePart = timeStr.split('T')[1].slice(0, 5); // HH:mm
+            
+            // 如果這一天有在我們的 map 中，就加入小時預報
+            if (newWeatherMap[datePart]) {
+                newWeatherMap[datePart].hourly?.push({
+                    time: timePart,
+                    temp: Math.round(data.hourly.temperature_2m[index]),
+                    conditionCode: data.hourly.weather_code[index],
+                    precipitationProb: data.hourly.precipitation_probability[index]
+                });
+            }
+        });
+    }
+
+    // 處理 Current Data
+    // 注意：API 的 "current" 是指發送請求當下 (2026/1/3) 的天氣，而非未來的 1/8
+    // 但為了介面不報錯，我們還是可以存一下，或者如果我們在 1/8 當天查看，它就會是準的
+    if (data.current) {
+        // 這裡我們暫時把它綁定到 "今天" (如果今天在行程範圍內的話)
+        // 或者保留給 UI 做參考
+    }
+
+    return newWeatherMap;
+  };
+
+  const fetchWeather = async (targetDates: string[]) => {
+    setWeatherError('');
     setIsWeatherLoading(true);
 
-    // Default Fallback: Kyoto Coordinates
+    // Kyoto Coordinates (Default)
     const DEFAULT_LAT = 35.0116;
     const DEFAULT_LNG = 135.7681;
 
-    // 2. Try Geolocation
-    if (!navigator.geolocation) {
-       console.warn("Geolocation not supported, using default Kyoto location.");
-       fetchWeatherFromApi(DEFAULT_LAT, DEFAULT_LNG);
-       return;
-    }
+    try {
+      // Try Geolocation
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        const timeoutId = setTimeout(() => reject(new Error("Timeout")), 4000);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        // Success
-        fetchWeatherFromApi(position.coords.latitude, position.coords.longitude);
-      },
-      (error) => {
-        // Error / Denied / Timeout -> Fallback to Kyoto
-        console.warn("Location access denied or failed, using default Kyoto location.", error);
-        fetchWeatherFromApi(DEFAULT_LAT, DEFAULT_LNG);
-      },
-      { timeout: 5000 } // Add timeout to fail faster if GPS is stuck
-    );
+        if (!navigator.geolocation) {
+          clearTimeout(timeoutId);
+          reject(new Error("Not Supported"));
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            clearTimeout(timeoutId);
+            resolve(pos);
+          },
+          (err) => {
+            clearTimeout(timeoutId);
+            reject(err);
+          },
+          { maximumAge: 60000, timeout: 5000, enableHighAccuracy: false } 
+        );
+      });
+
+      // GPS Success
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      
+      // 1. 取得真實天氣
+      const data = await fetchWeatherFromApi(lat, lng, targetDates);
+      setWeatherData(data);
+      
+      // 2. 取得真實城市名稱
+      const cityName = await fetchCityName(lat, lng);
+      setCity(cityName);
+
+    } catch (gpsError) {
+      // Fallback to Kyoto
+      console.warn("GPS failed, using Kyoto default.");
+      setCity('京都 (Kyoto)'); // 定位失敗，直接顯示京都
+      try {
+        const data = await fetchWeatherFromApi(DEFAULT_LAT, DEFAULT_LNG, targetDates);
+        setWeatherData(data);
+      } catch (apiError: any) {
+        console.error("API failed completely", apiError);
+        setWeatherData(OFFLINE_WEATHER_DATA);
+        setWeatherError('(離線模式)');
+      }
+    } finally {
+      setIsWeatherLoading(false);
+    }
   };
 
   const handleAddDate = () => {
@@ -267,7 +385,7 @@ const ScheduleView: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">行程 Schedule</h1>
             <p className="text-sm text-gray-500 mt-1 font-medium flex items-center">
-              <i className="fa-solid fa-location-dot mr-1 text-ios-red"></i> 大阪 & 京都
+              <i className="fa-solid fa-location-dot mr-1 text-ios-red"></i> {city}
             </p>
           </div>
           <button 
@@ -278,10 +396,13 @@ const ScheduleView: React.FC = () => {
           </button>
         </div>
         
-        {/* Date Scroller - Updated for better spacing and scrolling */}
+        {/* Date Scroller */}
         <div className="flex overflow-x-auto no-scrollbar px-6 pb-4 gap-4 snap-x w-full">
           {dates.map((date) => {
-            const day = new Date(date).getDate();
+            const dateObj = new Date(date);
+            const day = dateObj.getDate();
+            const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            const monthStr = monthNames[dateObj.getMonth()];
             const w = weatherData[date];
             const isSelected = date === selectedDate;
             return (
@@ -294,14 +415,15 @@ const ScheduleView: React.FC = () => {
                     : 'bg-white border-gray-100 text-gray-600'
                 }`}
               >
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'opacity-90' : 'opacity-60'}`}>Nov</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'opacity-90' : 'opacity-60'}`}>{monthStr}</span>
                 <span className="text-2xl font-bold leading-none my-0.5">{day}</span>
-                <i className={`fa-solid ${getWeatherIconByCode(w?.conditionCode)} text-xs mt-1 ${isSelected ? 'text-white' : ''}`}></i>
+                {/* 這裡使用條件式：未選中時顯示彩色圖示，選中時顯示白色圖示 */}
+                <i className={`fa-solid ${getWeatherIconClass(w?.conditionCode)} text-xs mt-1 ${isSelected ? 'text-white' : getWeatherColorClass(w?.conditionCode)}`}></i>
               </button>
             );
           })}
           
-          {/* Add Date Button - Fixed width to match cards */}
+          {/* Add Date Button */}
           <button 
              onClick={handleAddDate}
              className="flex-shrink-0 flex flex-col items-center justify-center w-[4.5rem] h-20 rounded-2xl border-2 border-dashed border-gray-200 text-gray-400 bg-gray-50/50 hover:bg-gray-100 active:scale-95 transition-all"
@@ -309,44 +431,51 @@ const ScheduleView: React.FC = () => {
              <i className="fa-solid fa-plus text-xl mb-1"></i>
              <span className="text-[10px] font-medium">Add</span>
           </button>
-          
-          {/* Spacer for proper end padding scrolling */}
           <div className="w-2 flex-shrink-0"></div>
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-6 pb-24 space-y-6">
-        {/* Weather Summary Card - Clickable */}
+        
+        {/* Weather Summary Card - Updated UI */}
         <button 
            onClick={() => currentWeather && setShowWeatherModal(true)}
-           className="w-full bg-white rounded-2xl p-4 shadow-ios-sm flex items-center justify-between border border-gray-100 active:scale-[0.98] transition-transform text-left"
+           className="w-full bg-white rounded-2xl p-5 shadow-ios-sm flex items-center justify-between border border-gray-100 active:scale-[0.98] transition-transform text-left"
         >
-           <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gray-50 text-xl`}>
+           <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-gray-50 text-2xl shadow-inner`}>
                  {isWeatherLoading ? (
                     <i className="fa-solid fa-spinner fa-spin text-gray-400"></i>
                  ) : (
-                    <i className={`fa-solid ${getWeatherIconByCode(currentWeather?.conditionCode)}`}></i>
+                    // 這裡顯示彩色的天氣圖示
+                    <i className={`fa-solid ${getWeatherIconClass(currentWeather?.conditionCode)} ${getWeatherColorClass(currentWeather?.conditionCode)}`}></i>
                  )}
               </div>
               <div>
-                <p className="font-semibold text-gray-800 capitalize flex items-center gap-2">
-                   {currentWeather ? getWeatherDescription(currentWeather.conditionCode) : '載入中...'}
-                   {currentWeather && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 rounded">詳細</span>}
+                <p className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                   {city}
                 </p>
-                <p className="text-xs text-gray-500">
-                  {isWeatherLoading ? '定位中...' : (currentWeather ? '當地即時天氣' : '無法取得天氣')}
-                </p>
+                <div className="flex items-center text-xs text-gray-500 font-medium mt-1 gap-2">
+                   {/* 顯示選中的日期 (例如 01/08) */}
+                   <span className="bg-gray-100 px-2 py-0.5 rounded text-gray-600 font-bold">
+                     {selectedDate.split('-')[1]}/{selectedDate.split('-')[2]}
+                   </span>
+                   <span>
+                      {isWeatherLoading ? '更新中...' : (currentWeather ? getWeatherDescription(currentWeather.conditionCode) : '無此日預報')}
+                   </span>
+                </div>
               </div>
            </div>
+           
            <div className="text-right">
               {currentWeather ? (
                 <>
-                  <span className="text-xl font-bold text-gray-900">{currentWeather.currentTemp ?? currentWeather.tempMax}°</span>
-                  <div className="text-xs text-gray-400 mt-0.5">
-                     <i className="fa-solid fa-umbrella text-[10px] mr-1"></i>
-                     {currentWeather.precipitationProb ?? 0}%
+                  <span className="text-3xl font-bold text-gray-900 tracking-tight">
+                    {currentWeather.currentTemp ?? Math.round((currentWeather.tempMax + currentWeather.tempMin) / 2)}°
+                  </span>
+                  <div className="text-xs text-gray-500 font-semibold mt-1">
+                     體感 {currentWeather.currentApparentTemp ?? Math.round(((currentWeather.apparentTempMax || 0) + (currentWeather.apparentTempMin || 0)) / 2)}°
                   </div>
                 </>
               ) : (
@@ -403,13 +532,15 @@ const ScheduleView: React.FC = () => {
       {/* WEATHER MODAL */}
       {showWeatherModal && currentWeather && (
          <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-md p-0 sm:p-4">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out] text-white">
+            {/* 動態背景漸層 */}
+            <div className={`bg-gradient-to-br ${getWeatherGradientClass(currentWeather.conditionCode)} w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-[slideUp_0.3s_ease-out] text-white`}>
                {/* Header */}
                <div className="p-6 pb-2 flex justify-between items-start">
                   <div>
                      <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <i className="fa-solid fa-location-arrow text-sm"></i> 當地天氣
+                        <i className="fa-solid fa-location-arrow text-sm"></i> {city}
                      </h2>
+                     {/* 顯示詳細的日期 */}
                      <p className="text-blue-100 text-sm opacity-80">{currentWeather.date}</p>
                   </div>
                   <button 
@@ -422,21 +553,30 @@ const ScheduleView: React.FC = () => {
 
                {/* Current Status */}
                <div className="flex flex-col items-center justify-center py-6">
-                  <i className={`fa-solid ${getWeatherIconByCode(currentWeather.conditionCode)} text-6xl mb-4 text-yellow-300 drop-shadow-lg`}></i>
+                  {/* Modal 中的大圖示使用白色使其在深色背景上凸顯 */}
+                  <i className={`fa-solid ${getWeatherIconClass(currentWeather.conditionCode)} text-6xl mb-4 drop-shadow-lg text-white`}></i>
                   <div className="text-6xl font-bold tracking-tighter mb-2">
-                     {currentWeather.currentTemp ?? currentWeather.tempMax}°
+                     {currentWeather.currentTemp ?? Math.round((currentWeather.tempMax + currentWeather.tempMin) / 2)}°
                   </div>
-                  <div className="text-lg font-medium bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                  <div className="text-lg font-medium bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm mb-1">
                      {getWeatherDescription(currentWeather.conditionCode)}
                   </div>
-                  <div className="flex gap-6 mt-6 w-full px-10">
-                     <div className="flex-1 text-center bg-white/10 rounded-xl p-2 backdrop-blur-sm">
+                  <div className="text-sm text-blue-100 font-medium">
+                     體感 {currentWeather.currentApparentTemp ?? Math.round(((currentWeather.apparentTempMax || 0) + (currentWeather.apparentTempMin || 0)) / 2)}°
+                  </div>
+
+                  <div className="flex gap-4 mt-8 w-full px-6">
+                     <div className="flex-1 text-center bg-white/10 rounded-xl p-3 backdrop-blur-sm">
                         <div className="text-xs text-blue-100 opacity-70 mb-1">降雨機率</div>
                         <div className="text-xl font-bold"><i className="fa-solid fa-umbrella text-sm mr-1"></i>{currentWeather.precipitationProb ?? 0}%</div>
                      </div>
-                     <div className="flex-1 text-center bg-white/10 rounded-xl p-2 backdrop-blur-sm">
-                        <div className="text-xs text-blue-100 opacity-70 mb-1">高/低溫</div>
+                     <div className="flex-1 text-center bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+                        <div className="text-xs text-blue-100 opacity-70 mb-1">氣溫範圍</div>
                         <div className="text-xl font-bold">{currentWeather.tempMax}° / {currentWeather.tempMin}°</div>
+                     </div>
+                     <div className="flex-1 text-center bg-white/10 rounded-xl p-3 backdrop-blur-sm">
+                        <div className="text-xs text-blue-100 opacity-70 mb-1">體感範圍</div>
+                        <div className="text-xl font-bold">{currentWeather.apparentTempMax}° / {currentWeather.apparentTempMin}°</div>
                      </div>
                   </div>
                </div>
@@ -448,7 +588,8 @@ const ScheduleView: React.FC = () => {
                      {currentWeather.hourly?.map((hour, idx) => (
                         <div key={idx} className="flex-shrink-0 flex flex-col items-center gap-2 w-14">
                            <span className="text-xs font-bold text-gray-400">{hour.time}</span>
-                           <i className={`fa-solid ${getWeatherIconByCode(hour.conditionCode)} text-xl`}></i>
+                           {/* 小時預報使用彩色圖示 */}
+                           <i className={`fa-solid ${getWeatherIconClass(hour.conditionCode)} text-xl ${getWeatherColorClass(hour.conditionCode)}`}></i>
                            <span className="text-lg font-bold">{hour.temp}°</span>
                            <div className="text-[10px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">
                               {hour.precipitationProb}% <i className="fa-solid fa-droplet text-[8px]"></i>

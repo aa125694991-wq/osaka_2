@@ -52,7 +52,10 @@ export interface WeatherInfo {
   conditionCode?: number; // WMO code
   tempMin: number;
   tempMax: number;
+  apparentTempMax?: number; // RealFeel High
+  apparentTempMin?: number; // RealFeel Low
   currentTemp?: number;
+  currentApparentTemp?: number; // Current RealFeel
   hourly?: HourlyForecast[];
   precipitationProb?: number;
   lastUpdated?: number; // Timestamp
