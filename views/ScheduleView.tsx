@@ -39,6 +39,7 @@ const ScheduleView: React.FC = () => {
   const [dates, setDates] = useState<string[]>([]); 
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [permissionError, setPermissionError] = useState(false);
 
   // --- View State ---
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -58,44 +59,50 @@ const ScheduleView: React.FC = () => {
   useEffect(() => {
     // 1. Sync Dates (Collection: schedule_meta, Doc: dates)
     const datesRef = doc(db, 'schedule_meta', 'dates');
-    const unsubDates = onSnapshot(datesRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const loadedDates = docSnap.data().values as string[];
-        setDates(loadedDates);
-        // 如果還沒有選中日期（剛載入），預設選第一天
-        if (!selectedDate && loadedDates.length > 0) {
-            setSelectedDate(loadedDates[0]);
+    const unsubDates = onSnapshot(datesRef, 
+      (docSnap) => {
+        setPermissionError(false);
+        if (docSnap.exists()) {
+          const loadedDates = docSnap.data().values as string[];
+          setDates(loadedDates);
+          // 如果還沒有選中日期（剛載入），預設選第一天
+          if (!selectedDate && loadedDates.length > 0) {
+              setSelectedDate(loadedDates[0]);
+          }
+        } else {
+          // [First Run Initialization]
+          console.log("Initializing Firebase Data...");
+          const batch = writeBatch(db);
+          batch.set(datesRef, { values: INITIAL_DATES });
+          INITIAL_EVENTS.forEach(ev => {
+              const evRef = doc(db, 'schedule_events', ev.id);
+              batch.set(evRef, ev);
+          });
+          batch.commit().catch(err => console.error("Initialization failed:", err));
+          
+          setDates(INITIAL_DATES);
+          setSelectedDate(INITIAL_DATES[0]);
         }
-      } else {
-        // [First Run Initialization]
-        // 如果資料庫沒有日期設定，代表是第一次執行，執行初始化
-        console.log("Initializing Firebase Data...");
-        const batch = writeBatch(db);
-        
-        // 設定初始日期
-        batch.set(datesRef, { values: INITIAL_DATES });
-        
-        // 設定初始行程
-        INITIAL_EVENTS.forEach(ev => {
-            const evRef = doc(db, 'schedule_events', ev.id);
-            batch.set(evRef, ev);
-        });
-        
-        batch.commit().catch(err => console.error("Initialization failed:", err));
-        
-        // 本地先暫時設定，讓畫面不留白
-        setDates(INITIAL_DATES);
-        setSelectedDate(INITIAL_DATES[0]);
+      },
+      (error) => {
+        console.error("Firestore Dates Error:", error);
+        if (error.code === 'permission-denied') setPermissionError(true);
       }
-    });
+    );
 
     // 2. Sync Events (Collection: schedule_events)
     const eventsRef = collection(db, 'schedule_events');
-    const unsubEvents = onSnapshot(eventsRef, (snapshot) => {
-       const loadedEvents = snapshot.docs.map(d => d.data() as ScheduleEvent);
-       setEvents(loadedEvents);
-       setIsDataLoaded(true);
-    });
+    const unsubEvents = onSnapshot(eventsRef, 
+      (snapshot) => {
+         const loadedEvents = snapshot.docs.map(d => d.data() as ScheduleEvent);
+         setEvents(loadedEvents);
+         setIsDataLoaded(true);
+      },
+      (error) => {
+        console.error("Firestore Events Error:", error);
+        // Usually handled by the dates listener error state, but safe to log here
+      }
+    );
 
     return () => {
       unsubDates();
@@ -309,11 +316,30 @@ const ScheduleView: React.FC = () => {
     }
   };
 
+  if (permissionError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+        <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-4 text-2xl">
+          <i className="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">資料庫權限不足</h2>
+        <p className="text-gray-500 mb-6 text-sm">
+          請至 Firebase Console {'>'} Firestore Database {'>'} Rules <br/>
+          將規則改為 allow read, write: if true;
+        </p>
+        <button onClick={() => window.location.reload()} className="bg-ios-blue text-white px-6 py-2 rounded-xl font-bold">
+          重試
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-ios-bg">
       {/* Header & Date Picker */}
-      <div className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-200 shadow-sm">
-        <div className="px-6 pt-5 pb-3 flex justify-between items-center">
+      {/* UPDATE: Added pt-safe to handle iPhone notch area */}
+      <div className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-200 shadow-sm pt-safe">
+        <div className="px-6 pt-2 pb-3 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">行程 Schedule</h1>
             <p className="text-sm text-gray-500 mt-1 font-medium flex items-center">

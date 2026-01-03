@@ -32,7 +32,8 @@ const PlanningView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-ios-bg">
-       <div className="px-6 pt-10 pb-6 bg-white border-b border-gray-200">
+       {/* UPDATE: Added pt-safe to header */}
+       <div className="px-6 pt-safe pt-6 pb-6 bg-white border-b border-gray-200">
          <h1 className="text-2xl font-bold text-gray-900 mb-4">行前準備</h1>
          
          <div className="flex bg-gray-100 p-1 rounded-xl">

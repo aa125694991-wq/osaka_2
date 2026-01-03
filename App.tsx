@@ -7,7 +7,7 @@ import PlanningView from './views/PlanningView';
 
 // Firebase Auth
 import { auth } from './services/firebase';
-import * as firebaseAuth from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<ViewTab>('schedule');
@@ -15,14 +15,22 @@ const App: React.FC = () => {
 
   // 初始化：自動進行匿名登入
   useEffect(() => {
-    const unsubscribe = firebaseAuth.onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("User is signed in:", user.uid);
         setIsAuthenticated(true);
       } else {
-        console.log("Signing in anonymously...");
-        firebaseAuth.signInAnonymously(auth).catch((error) => {
-          console.error("Anonymous auth failed:", error);
+        console.log("Attempting to sign in anonymously...");
+        signInAnonymously(auth).catch((error) => {
+          // 如果是 "admin-restricted-operation"，代表 Firebase Console 沒開匿名登入
+          // 但如果使用者的 Firestore Rules 設為 public，這其實不影響運作，所以改用 warn 提示即可
+          if (error.code === 'auth/admin-restricted-operation') {
+             console.warn(">> 注意: Firebase 匿名登入功能未啟用 (auth/admin-restricted-operation)。");
+             console.warn(">> 如果您已將 Firestore Rules 設為 public (allow read, write: if true;)，可忽略此警告。");
+             console.warn(">> 若需啟用: 請至 Firebase Console > Authentication > Sign-in method 開啟 Anonymous。");
+          } else {
+             console.error("Anonymous auth failed:", error);
+          }
         });
       }
     });

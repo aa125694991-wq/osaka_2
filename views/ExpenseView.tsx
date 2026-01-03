@@ -246,7 +246,8 @@ const ExpenseView: React.FC = () => {
 
   if (viewMode === 'history') {
       return (
-        <div className="flex flex-col h-full bg-gray-50 animate-[fadeIn_0.2s_ease-out]">
+        // UPDATE: Added pt-safe to container to push content down from notch
+        <div className="flex flex-col h-full bg-gray-50 animate-[fadeIn_0.2s_ease-out] pt-safe">
             <div className="bg-white px-4 pt-4 pb-2 border-b border-gray-200 sticky top-0 z-20 shadow-sm">
                  <div className="flex items-center justify-between mb-4">
                     <button 
@@ -280,7 +281,8 @@ const ExpenseView: React.FC = () => {
                  </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 bg-gray-50">
+            {/* UPDATE: Increased pb-24 to pb-32 for iPhone Home Indicator safety */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32 bg-gray-50">
                 {historyTab === 'list' ? (
                     expenses.length === 0 ? (
                         <div className="text-center text-gray-400 mt-20">
@@ -363,7 +365,8 @@ const ExpenseView: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
        {/* Dashboard Header */}
-       <div className="bg-ios-indigo px-6 pt-10 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10 shrink-0">
+       {/* UPDATE: Added pt-safe and adjusted padding to avoid Notch */}
+       <div className="bg-ios-indigo px-6 pt-safe pt-6 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10 shrink-0">
          <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-2">
                <h1 className="text-2xl font-bold text-white">支出總覽</h1>
@@ -395,7 +398,8 @@ const ExpenseView: React.FC = () => {
        </div>
 
        {/* Recent Expense List */}
-       <div className="flex-1 overflow-y-auto px-4 -mt-6 pt-8 pb-24 space-y-4">
+       {/* UPDATE: Increased padding bottom to pb-32 to avoid floating button overlap on tall phones */}
+       <div className="flex-1 overflow-y-auto px-4 -mt-6 pt-8 pb-32 space-y-4">
           <div className="flex justify-between items-center px-2">
             <h3 className="font-bold text-gray-700">近期消費明細</h3>
             <button 
@@ -414,9 +418,10 @@ const ExpenseView: React.FC = () => {
        </div>
 
        {/* Floating Action Button */}
+       {/* UPDATE: Adjusted bottom position to account for Safe Area Bottom + Tab Bar */}
        <button 
          onClick={() => setShowAddModal(true)}
-         className="absolute bottom-24 right-6 w-14 h-14 bg-ios-blue text-white rounded-full shadow-lg shadow-blue-300 flex items-center justify-center text-2xl active:scale-90 transition-transform z-30"
+         className="absolute bottom-28 right-6 w-14 h-14 bg-ios-blue text-white rounded-full shadow-lg shadow-blue-300 flex items-center justify-center text-2xl active:scale-90 transition-transform z-30"
        >
          <i className="fa-solid fa-plus"></i>
        </button>
@@ -425,8 +430,8 @@ const ExpenseView: React.FC = () => {
 
        {/* Add Expense Modal */}
        {showAddModal && (
-         <div className="absolute inset-0 z-50 flex items-end bg-black/50 backdrop-blur-sm">
-            <div className="bg-white w-full max-h-[90%] overflow-y-auto rounded-t-3xl p-6 pb-safe animate-[slideUp_0.3s_ease-out] shadow-2xl">
+         <div className="fixed inset-0 z-[60] flex items-end bg-black/50 backdrop-blur-sm">
+            <div className="bg-white w-full max-h-[90%] overflow-y-auto rounded-t-3xl p-6 pb-20 animate-[slideUp_0.3s_ease-out] shadow-2xl">
                <div className="flex justify-between items-center mb-6">
                   <h2 className="text-xl font-bold">新增記帳</h2>
                   <button onClick={() => setShowAddModal(false)} className="text-gray-400 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i className="fa-solid fa-xmark"></i></button>
@@ -535,7 +540,7 @@ const ExpenseView: React.FC = () => {
 
        {/* Edit Members Modal */}
        {showMemberModal && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-[scaleIn_0.2s_ease-out]">
                 <h2 className="text-xl font-bold mb-4">成員管理</h2>
                 <div className="space-y-3 mb-6">
