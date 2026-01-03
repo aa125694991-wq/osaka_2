@@ -1,12 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-// Workaround for TypeScript error: Module '"firebase/auth"' has no exported member...
-import * as firebaseAuth from "firebase/auth";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
-
-// Extract auth functions with type casting to bypass potential definition issues
-const { getAuth, onAuthStateChanged, signInAnonymously } = firebaseAuth as any;
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,13 +16,16 @@ const firebaseConfig = {
   measurementId: "G-X6PQJNNSSK"
 };
 
-// Initialize Firebase
+// 1. 初始化 Firebase App 實體
 const app = initializeApp(firebaseConfig);
 
-// Initialize Services
-const db = getFirestore(app); // For data syncing
-const auth = getAuth(app);    // For user authentication
-const storage = getStorage(app); // For photo uploads
-const analytics = getAnalytics(app); 
+// 2. 初始化各項服務並導出
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
+export const analytics = getAnalytics(app);
 
-export { app, db, auth, storage, analytics, onAuthStateChanged, signInAnonymously };
+// 3. 導出 Auth 相關功能函式
+export { onAuthStateChanged, signInAnonymously };
+
+export default app;
