@@ -1,11 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import * as firebaseAuth from "firebase/auth";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
-
-// Extract named exports from the namespace object to avoid import errors
-const { getAuth, onAuthStateChanged, signInAnonymously } = firebaseAuth;
 
 // Your web app's Firebase configuration
 const firebaseConfig = {

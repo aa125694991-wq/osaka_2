@@ -32,8 +32,8 @@ const PlanningView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-ios-bg">
-       {/* UPDATE: Added pt-safe to header */}
-       <div className="px-6 pt-safe pt-6 pb-6 bg-white border-b border-gray-200">
+       {/* Correct safe area padding for Notch */}
+       <div className="px-6 pt-safe pt-4 pb-6 bg-white border-b border-gray-200">
          <h1 className="text-2xl font-bold text-gray-900 mb-4">行前準備</h1>
          
          <div className="flex bg-gray-100 p-1 rounded-xl">
@@ -56,7 +56,7 @@ const PlanningView: React.FC = () => {
          </div>
        </div>
 
-       <div className="p-6">
+       <div className="p-6 flex-1 overflow-y-auto">
          {/* Progress Bar */}
          <div className="mb-6">
             <div className="flex justify-between text-xs font-semibold text-gray-500 mb-2">
@@ -71,7 +71,7 @@ const PlanningView: React.FC = () => {
             </div>
          </div>
 
-         <div className="space-y-3 pb-24">
+         <div className="space-y-3 pb-32">
             {currentList.map(item => (
                <div 
                  key={item.id}

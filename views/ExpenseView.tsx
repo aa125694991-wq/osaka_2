@@ -246,42 +246,44 @@ const ExpenseView: React.FC = () => {
 
   if (viewMode === 'history') {
       return (
-        // UPDATE: Added pt-safe to container to push content down from notch
-        <div className="flex flex-col h-full bg-gray-50 animate-[fadeIn_0.2s_ease-out] pt-safe">
-            <div className="bg-white px-4 pt-4 pb-2 border-b border-gray-200 sticky top-0 z-20 shadow-sm">
-                 <div className="flex items-center justify-between mb-4">
-                    <button 
-                        onClick={() => setViewMode('dashboard')}
-                        className="text-ios-blue flex items-center gap-1 text-lg font-medium active:opacity-60"
-                    >
-                        <i className="fa-solid fa-chevron-left"></i> 返回
-                    </button>
-                    <h2 className="text-lg font-bold text-gray-900">帳務明細</h2>
-                    <div className="w-10"></div>
-                 </div>
+        <div className="flex flex-col h-full bg-gray-50 animate-[fadeIn_0.2s_ease-out]">
+            {/* History Header with correct safe area padding */}
+            <div className="bg-white pt-safe border-b border-gray-200 sticky top-0 z-20 shadow-sm">
+                 <div className="px-4 pt-4 pb-2">
+                    <div className="flex items-center justify-between mb-4">
+                        <button 
+                            onClick={() => setViewMode('dashboard')}
+                            className="text-ios-blue flex items-center gap-1 text-lg font-medium active:opacity-60"
+                        >
+                            <i className="fa-solid fa-chevron-left"></i> 返回
+                        </button>
+                        <h2 className="text-lg font-bold text-gray-900">帳務明細</h2>
+                        <div className="w-10"></div>
+                    </div>
 
-                 {/* Segmented Control */}
-                 <div className="flex bg-gray-100 p-1 rounded-xl mb-2">
-                   <button 
-                     onClick={() => setHistoryTab('list')}
-                     className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${
-                       historyTab === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-                     }`}
-                   >
-                     交易明細
-                   </button>
-                   <button 
-                     onClick={() => setHistoryTab('balance')}
-                     className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${
-                       historyTab === 'balance' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-                     }`}
-                   >
-                     分帳結算
-                   </button>
+                    {/* Segmented Control */}
+                    <div className="flex bg-gray-100 p-1 rounded-xl mb-2">
+                    <button 
+                        onClick={() => setHistoryTab('list')}
+                        className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${
+                        historyTab === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                        }`}
+                    >
+                        交易明細
+                    </button>
+                    <button 
+                        onClick={() => setHistoryTab('balance')}
+                        className={`flex-1 py-1.5 text-sm font-bold rounded-lg transition-all ${
+                        historyTab === 'balance' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                        }`}
+                    >
+                        分帳結算
+                    </button>
+                    </div>
                  </div>
             </div>
             
-            {/* UPDATE: Increased pb-24 to pb-32 for iPhone Home Indicator safety */}
+            {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32 bg-gray-50">
                 {historyTab === 'list' ? (
                     expenses.length === 0 ? (
@@ -365,9 +367,9 @@ const ExpenseView: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
        {/* Dashboard Header */}
-       {/* UPDATE: Added pt-safe and adjusted padding to avoid Notch */}
-       <div className="bg-ios-indigo px-6 pt-safe pt-6 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10 shrink-0">
-         <div className="flex justify-between items-center mb-6">
+       {/* Optimized padding for Notch: pt-safe + small padding */}
+       <div className="bg-ios-indigo px-6 pt-safe pt-2 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10 shrink-0">
+         <div className="flex justify-between items-center mb-6 pt-2">
             <div className="flex items-center gap-2">
                <h1 className="text-2xl font-bold text-white">支出總覽</h1>
                <button onClick={() => setShowMemberModal(true)} className="bg-white/20 px-2 py-0.5 rounded-lg text-white/90 text-xs font-medium backdrop-blur-sm active:bg-white/30">
@@ -398,7 +400,6 @@ const ExpenseView: React.FC = () => {
        </div>
 
        {/* Recent Expense List */}
-       {/* UPDATE: Increased padding bottom to pb-32 to avoid floating button overlap on tall phones */}
        <div className="flex-1 overflow-y-auto px-4 -mt-6 pt-8 pb-32 space-y-4">
           <div className="flex justify-between items-center px-2">
             <h3 className="font-bold text-gray-700">近期消費明細</h3>
@@ -417,11 +418,11 @@ const ExpenseView: React.FC = () => {
           )}
        </div>
 
-       {/* Floating Action Button */}
-       {/* UPDATE: Adjusted bottom position to account for Safe Area Bottom + Tab Bar */}
+       {/* Floating Action Button - Positioned considering Bottom Safe Area */}
        <button 
          onClick={() => setShowAddModal(true)}
-         className="absolute bottom-28 right-6 w-14 h-14 bg-ios-blue text-white rounded-full shadow-lg shadow-blue-300 flex items-center justify-center text-2xl active:scale-90 transition-transform z-30"
+         className="absolute right-6 w-14 h-14 bg-ios-blue text-white rounded-full shadow-lg shadow-blue-300 flex items-center justify-center text-2xl active:scale-90 transition-transform z-30"
+         style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }} 
        >
          <i className="fa-solid fa-plus"></i>
        </button>
