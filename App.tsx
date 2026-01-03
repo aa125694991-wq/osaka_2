@@ -8,6 +8,15 @@ import PlanningView from './views/PlanningView';
 // Firebase Auth
 // Updated import to use the exports from services/firebase to avoid direct import errors
 import { auth, onAuthStateChanged, signInAnonymously } from './services/firebase';
+import { forceUploadToFirebase } from './forceUpload';
+
+// 在你的 return 畫面中隨便找個地方塞入：
+<button 
+  onClick={() => forceUploadToFirebase()}
+  style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999, padding: '10px', background: 'red', color: 'white' }}
+>
+  點我：強制同步行程至 Firebase
+</button>
 
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<ViewTab>('schedule');
