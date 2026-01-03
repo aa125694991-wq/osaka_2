@@ -5,53 +5,49 @@ import ScheduleView from './views/ScheduleView';
 import ExpenseView from './views/ExpenseView';
 import PlanningView from './views/PlanningView';
 
-// Firebase 服務與資料
-import { auth, db, onAuthStateChanged, signInAnonymously } from './services/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { INITIAL_EVENTS } from './data/scheduleData';
+// Firebase Auth
+// Updated import to use the exports from services/firebase to avoid direct import errors
+import { auth, onAuthStateChanged, signInAnonymously } from './services/firebase';
 
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<ViewTab>('schedule');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // --- 強制寫入邏輯 (執行完後可刪除) ---
-  const uploadItinerary = async () => {
-    try {
-      console.log('正在強制上傳行程至 Firebase...');
-      const eventsRef = collection(db, 'events');
-      await Promise.all(INITIAL_EVENTS.map(event => {
-        return setDoc(doc(eventsRef, event.id), event);
-      }));
-      console.log('✅ 所有行程已成功強制寫入 Firebase！');
-    } catch (error) {
-      console.error('❌ 寫入失敗：', error);
-    }
-  };
-
+  // 初始化：自動進行匿名登入
   useEffect(() => {
-    // 初始化時執行一次寫入
-    uploadItinerary();
-
-    // 匿名登入邏輯
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user: any) => {
       if (user) {
+        console.log("User is signed in:", user.uid);
         setIsAuthenticated(true);
       } else {
-        signInAnonymously(auth).catch((error) => {
-          console.warn("登入提示:", error.message);
+        console.log("Attempting to sign in anonymously...");
+        signInAnonymously(auth).catch((error: any) => {
+          // 如果是 "admin-restricted-operation"，代表 Firebase Console 沒開匿名登入
+          // 但如果使用者的 Firestore Rules 設為 public，這其實不影響運作，所以改用 warn 提示即可
+          if (error.code === 'auth/admin-restricted-operation') {
+             console.warn(">> 注意: Firebase 匿名登入功能未啟用 (auth/admin-restricted-operation)。");
+             console.warn(">> 如果您已將 Firestore Rules 設為 public (allow read, write: if true;)，可忽略此警告。");
+             console.warn(">> 若需啟用: 請至 Firebase Console > Authentication > Sign-in method 開啟 Anonymous。");
+          } else {
+             console.error("Anonymous auth failed:", error);
+          }
         });
       }
     });
 
     return () => unsubscribe();
   }, []);
-  // --------------------------------
 
   return (
     <div className="h-[100dvh] w-full max-w-md mx-auto bg-white relative shadow-2xl overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-hidden relative bg-gray-50">
+      <div className="flex-1 overflow-hidden relative bg-ios-bg">
+        {/* 
+          關鍵修改：
+          不使用 switch case 來 mount/unmount 元件。
+          而是將所有 View 都渲染出來，利用 className="hidden" 來控制顯示。
+          這樣切換 Tab 時，ScheduleView 的狀態、捲動位置和 Firebase 監聽器都會被保留。
+        */}
         
-        {/* 使用 hidden 控制切換，保留各分頁狀態 */}
         <div className={`h-full w-full ${currentTab === 'schedule' ? 'block' : 'hidden'}`}>
           <ScheduleView />
         </div>
@@ -63,9 +59,7 @@ const App: React.FC = () => {
         <div className={`h-full w-full ${currentTab === 'planning' ? 'block' : 'hidden'}`}>
           <PlanningView />
         </div>
-        
       </div>
-
       <TabNavigation currentTab={currentTab} onTabChange={setCurrentTab} />
     </div>
   );
