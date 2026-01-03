@@ -56,52 +56,54 @@ const PlanningView: React.FC = () => {
          </div>
        </div>
 
-       <div className="p-6 flex-1 overflow-y-auto">
-         {/* Progress Bar */}
-         <div className="mb-6">
-            <div className="flex justify-between text-xs font-semibold text-gray-500 mb-2">
-               <span>進度 (Progress)</span>
-               <span>{progress}%</span>
+       <div className="flex-1 overflow-y-auto">
+          <div className="p-6 pb-44 space-y-6">
+            {/* Progress Bar */}
+            <div>
+                <div className="flex justify-between text-xs font-semibold text-gray-500 mb-2">
+                <span>進度 (Progress)</span>
+                <span>{progress}%</span>
+                </div>
+                <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                    className="h-full bg-ios-green transition-all duration-500 ease-out" 
+                    style={{ width: `${progress}%` }}
+                ></div>
+                </div>
             </div>
-            <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-               <div 
-                 className="h-full bg-ios-green transition-all duration-500 ease-out" 
-                 style={{ width: `${progress}%` }}
-               ></div>
-            </div>
-         </div>
 
-         <div className="space-y-3 pb-32">
-            {currentList.map(item => (
-               <div 
-                 key={item.id}
-                 onClick={() => toggleItem(item.id)}
-                 className="group bg-white p-4 rounded-xl border border-gray-100 shadow-ios-sm flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-all"
-               >
-                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    item.completed ? 'bg-ios-green border-ios-green' : 'border-gray-300'
-                 }`}>
-                    {item.completed && <i className="fa-solid fa-check text-white text-xs"></i>}
-                 </div>
-                 
-                 <div className="flex-1">
-                    <p className={`font-medium transition-all ${
-                       item.completed ? 'text-gray-400 line-through' : 'text-gray-900'
+            <div className="space-y-3">
+                {currentList.map(item => (
+                <div 
+                    key={item.id}
+                    onClick={() => toggleItem(item.id)}
+                    className="group bg-white p-4 rounded-xl border border-gray-100 shadow-ios-sm flex items-center gap-4 cursor-pointer active:scale-[0.98] transition-all"
+                >
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        item.completed ? 'bg-ios-green border-ios-green' : 'border-gray-300'
                     }`}>
-                       {item.text}
-                    </p>
-                    {item.assignedTo && (
-                       <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded mt-1 inline-block">
-                          @{item.assignedTo}
-                       </span>
-                    )}
-                 </div>
-               </div>
-            ))}
-            
-            <button className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 font-medium hover:bg-gray-50 transition-colors">
-               <i className="fa-solid fa-plus mr-2"></i> 新增項目
-            </button>
+                        {item.completed && <i className="fa-solid fa-check text-white text-xs"></i>}
+                    </div>
+                    
+                    <div className="flex-1">
+                        <p className={`font-medium transition-all ${
+                        item.completed ? 'text-gray-400 line-through' : 'text-gray-900'
+                        }`}>
+                        {item.text}
+                        </p>
+                        {item.assignedTo && (
+                        <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded mt-1 inline-block">
+                            @{item.assignedTo}
+                        </span>
+                        )}
+                    </div>
+                </div>
+                ))}
+                
+                <button className="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 font-medium hover:bg-gray-50 transition-colors">
+                <i className="fa-solid fa-plus mr-2"></i> 新增項目
+                </button>
+            </div>
          </div>
        </div>
     </div>

@@ -284,7 +284,7 @@ const ExpenseView: React.FC = () => {
             </div>
             
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40 bg-gray-50">
                 {historyTab === 'list' ? (
                     expenses.length === 0 ? (
                         <div className="text-center text-gray-400 mt-20">
@@ -400,7 +400,7 @@ const ExpenseView: React.FC = () => {
        </div>
 
        {/* Recent Expense List */}
-       <div className="flex-1 overflow-y-auto px-4 -mt-6 pt-8 pb-32 space-y-4">
+       <div className="flex-1 overflow-y-auto px-4 -mt-6 pt-8 pb-48 space-y-4">
           <div className="flex justify-between items-center px-2">
             <h3 className="font-bold text-gray-700">近期消費明細</h3>
             <button 
