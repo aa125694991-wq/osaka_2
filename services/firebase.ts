@@ -1,8 +1,12 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
+// Workaround for TypeScript error: Module '"firebase/auth"' has no exported member...
+import * as firebaseAuth from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
+
+// Extract auth functions with type casting to bypass potential definition issues
+const { getAuth, onAuthStateChanged, signInAnonymously } = firebaseAuth as any;
 
 // Your web app's Firebase configuration
 const firebaseConfig = {

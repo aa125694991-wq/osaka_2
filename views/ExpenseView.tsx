@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Expense } from '../types';
+import { db } from '../services/firebase';
+import { collection, doc, onSnapshot, setDoc, deleteDoc, query, orderBy, writeBatch } from 'firebase/firestore';
 
-const INITIAL_MEMBERS = ['Jimmy', 'Serena', '媽媽', '姊姊'];
+const DEFAULT_MEMBERS = ['Jimmy', 'Serena', '媽媽', '姊姊'];
 
-const MOCK_EXPENSES: Expense[] = [
+const INITIAL_MOCK_EXPENSES: Expense[] = [
   { id: '1', amount: 1200, currency: 'JPY', category: 'Food', payer: 'Jimmy', splitWith: ['Jimmy', 'Serena'], date: '2024-11-15', note: '拉麵' },
   { id: '2', amount: 320, currency: 'JPY', category: 'Transport', payer: 'Serena', splitWith: ['Serena'], date: '2024-11-15', note: '地鐵' },
-  { id: '3', amount: 15000, currency: 'JPY', category: 'Accommodation', payer: 'Jimmy', splitWith: INITIAL_MEMBERS, date: '2024-11-15', note: '飯店訂金' },
-  { id: '4', amount: 5000, currency: 'JPY', category: 'Shopping', payer: '媽媽', splitWith: ['媽媽'], date: '2024-11-16', note: '藥妝店' },
+  { id: '3', amount: 15000, currency: 'JPY', category: 'Accommodation', payer: 'Jimmy', splitWith: DEFAULT_MEMBERS, date: '2024-11-15', note: '飯店訂金' },
 ];
 
 const JPY_RATE = 0.215; // Mock rate
@@ -29,11 +30,12 @@ interface Settlement {
 }
 
 const ExpenseView: React.FC = () => {
-  // Main Data State
-  const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
-  const [members, setMembers] = useState<string[]>(INITIAL_MEMBERS);
-  
-  // View State
+  // --- Data State (Synced with Firebase) ---
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [members, setMembers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // --- View State ---
   const [viewMode, setViewMode] = useState<'dashboard' | 'history'>('dashboard');
   const [historyTab, setHistoryTab] = useState<'list' | 'balance'>('list');
 
@@ -43,14 +45,77 @@ const ExpenseView: React.FC = () => {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   
   // Member Edit Temp State
-  const [editingMembers, setEditingMembers] = useState<string[]>([...INITIAL_MEMBERS]);
+  const [editingMembers, setEditingMembers] = useState<string[]>([]);
   
   // Add Expense Form State
   const [amountInput, setAmountInput] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]);
-  const [payer, setPayer] = useState(members[0]);
-  const [splitWith, setSplitWith] = useState<string[]>(members);
+  const [payer, setPayer] = useState('');
+  const [splitWith, setSplitWith] = useState<string[]>([]);
   const [note, setNote] = useState('');
+
+  // --- Firebase Sync ---
+  useEffect(() => {
+    // 1. Sync Expenses
+    const expensesRef = collection(db, 'expenses');
+    // Order by date desc, then by created timestamp (id)
+    const q = query(expensesRef); // Client-side sorting is often easier for small lists, but here we query all
+
+    const unsubExpenses = onSnapshot(q, (snapshot) => {
+        if (snapshot.empty && !loading) {
+             // Optional: Seed if empty? We'll leave it empty to be clean, or seed once.
+             // For now, let's just let it be empty.
+        }
+        
+        const loadedExpenses = snapshot.docs.map(d => d.data() as Expense);
+        // Sort descending locally
+        loadedExpenses.sort((a, b) => {
+            if (a.date !== b.date) return b.date.localeCompare(a.date);
+            return Number(b.id) - Number(a.id);
+        });
+        setExpenses(loadedExpenses);
+    });
+
+    // 2. Sync Members
+    const membersRef = doc(db, 'expense_meta', 'config');
+    const unsubMembers = onSnapshot(membersRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const list = docSnap.data().members as string[];
+            setMembers(list);
+            setEditingMembers(list);
+            // Initialization for forms
+            if (list.length > 0) {
+                 if (!payer) setPayer(list[0]);
+                 if (splitWith.length === 0) setSplitWith(list);
+            }
+        } else {
+            // Initialize Default Members
+            setDoc(membersRef, { members: DEFAULT_MEMBERS });
+            setMembers(DEFAULT_MEMBERS);
+            
+            // Also Seed Initial Expenses for demo purposes if it's a fresh DB
+            const batch = writeBatch(db);
+            INITIAL_MOCK_EXPENSES.forEach(exp => {
+                batch.set(doc(db, 'expenses', exp.id), exp);
+            });
+            batch.commit();
+        }
+        setLoading(false);
+    });
+
+    return () => {
+        unsubExpenses();
+        unsubMembers();
+    };
+  }, []);
+
+  // Update form defaults when members load
+  useEffect(() => {
+     if (members.length > 0 && !payer) {
+         setPayer(members[0]);
+         setSplitWith(members);
+     }
+  }, [members]);
 
   // Calculations
   const totalJPY = expenses.filter(e => e.currency === 'JPY').reduce((acc, cur) => acc + cur.amount, 0);
@@ -124,11 +189,12 @@ const ExpenseView: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!amountInput) return;
     
+    const newId = Date.now().toString();
     const newExpense: Expense = {
-      id: Date.now().toString(),
+      id: newId,
       amount: parseFloat(amountInput),
       currency: 'JPY', // Default to JPY for Japan trip
       category,
@@ -138,16 +204,20 @@ const ExpenseView: React.FC = () => {
       note: note || category
     };
 
-    setExpenses([newExpense, ...expenses]);
-    resetForm();
-    setShowAddModal(false);
+    try {
+        await setDoc(doc(db, 'expenses', newId), newExpense);
+        resetForm();
+        setShowAddModal(false);
+    } catch (e) {
+        alert("儲存失敗，請檢查網路");
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedExpense) return;
     const confirmDelete = window.confirm("確定要刪除這筆款項嗎？此動作無法復原。");
     if (confirmDelete) {
-        setExpenses(prev => prev.filter(e => e.id !== selectedExpense.id));
+        await deleteDoc(doc(db, 'expenses', selectedExpense.id));
         setSelectedExpense(null);
     }
   };
@@ -155,8 +225,10 @@ const ExpenseView: React.FC = () => {
   const resetForm = () => {
     setAmountInput('');
     setCategory(CATEGORIES[0]);
-    setPayer(members[0]);
-    setSplitWith(members);
+    if (members.length > 0) {
+        setPayer(members[0]);
+        setSplitWith(members);
+    }
     setNote('');
   };
 
@@ -170,12 +242,11 @@ const ExpenseView: React.FC = () => {
     }
   };
 
-  const saveMembers = () => {
+  const saveMembers = async () => {
      const validMembers = editingMembers.filter(m => m.trim() !== '');
      if (validMembers.length > 0) {
-        setMembers(validMembers);
-        setEditingMembers(validMembers);
-        // Ensure payer/split are valid
+        await setDoc(doc(db, 'expense_meta', 'config'), { members: validMembers });
+        // Ensure payer/split are valid locally immediately for better UX
         if (!validMembers.includes(payer)) setPayer(validMembers[0]);
         setSplitWith(validMembers);
      }
@@ -247,7 +318,7 @@ const ExpenseView: React.FC = () => {
   if (viewMode === 'history') {
       return (
         <div className="flex flex-col h-full bg-gray-50 animate-[fadeIn_0.2s_ease-out]">
-            {/* History Header with correct safe area padding */}
+            {/* History Header: Added z-20 */}
             <div className="bg-white pt-safe border-b border-gray-200 sticky top-0 z-20 shadow-sm">
                  <div className="px-4 pt-4 pb-2">
                     <div className="flex items-center justify-between mb-4">
@@ -284,7 +355,7 @@ const ExpenseView: React.FC = () => {
             </div>
             
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
                 {historyTab === 'list' ? (
                     expenses.length === 0 ? (
                         <div className="text-center text-gray-400 mt-20">
@@ -355,6 +426,9 @@ const ExpenseView: React.FC = () => {
                         </p>
                     </div>
                 )}
+
+                {/* Explicit Spacer for Bottom Tab Bar */}
+                <div className="h-32 w-full"></div>
             </div>
 
             {/* Reuse Detail Modal logic below */}
@@ -366,9 +440,8 @@ const ExpenseView: React.FC = () => {
   // Dashboard View
   return (
     <div className="flex flex-col h-full bg-gray-50 relative">
-       {/* Dashboard Header */}
-       {/* Optimized padding for Notch: pt-safe + small padding */}
-       <div className="bg-ios-indigo px-6 pt-safe pt-2 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10 shrink-0">
+       {/* Dashboard Header: z-20 for high layer priority */}
+       <div className="bg-ios-indigo px-6 pt-safe pt-2 pb-12 rounded-b-[2.5rem] shadow-lg relative z-20 shrink-0">
          <div className="flex justify-between items-center mb-6 pt-2">
             <div className="flex items-center gap-2">
                <h1 className="text-2xl font-bold text-white">支出總覽</h1>
@@ -399,8 +472,8 @@ const ExpenseView: React.FC = () => {
          </div>
        </div>
 
-       {/* Recent Expense List */}
-       <div className="flex-1 overflow-y-auto px-4 -mt-6 pt-8 pb-48 space-y-4">
+       {/* Recent Expense List: z-10 */}
+       <div className="flex-1 overflow-y-auto px-4 -mt-6 pt-8 space-y-4 relative z-10">
           <div className="flex justify-between items-center px-2">
             <h3 className="font-bold text-gray-700">近期消費明細</h3>
             <button 
@@ -416,13 +489,16 @@ const ExpenseView: React.FC = () => {
           {expenses.length === 0 && (
              <p className="text-center text-gray-400 py-8 text-sm">點擊右下角 + 開始記帳</p>
           )}
+
+          {/* Explicit Spacer for Bottom Tab Bar */}
+          <div className="h-32 w-full"></div>
        </div>
 
-       {/* Floating Action Button - Positioned considering Bottom Safe Area */}
+       {/* Floating Action Button */}
        <button 
          onClick={() => setShowAddModal(true)}
          className="absolute right-6 w-14 h-14 bg-ios-blue text-white rounded-full shadow-lg shadow-blue-300 flex items-center justify-center text-2xl active:scale-90 transition-transform z-30"
-         style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }} 
+         style={{ bottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }} 
        >
          <i className="fa-solid fa-plus"></i>
        </button>

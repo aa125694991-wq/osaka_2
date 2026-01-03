@@ -32,8 +32,8 @@ const PlanningView: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-ios-bg">
-       {/* Correct safe area padding for Notch */}
-       <div className="px-6 pt-safe pt-4 pb-6 bg-white border-b border-gray-200">
+       {/* Header: Added z-20 relative to ensure it stays on top of scrolling content */}
+       <div className="px-6 pt-safe pt-4 pb-6 bg-white border-b border-gray-200 z-20 relative shadow-sm">
          <h1 className="text-2xl font-bold text-gray-900 mb-4">行前準備</h1>
          
          <div className="flex bg-gray-100 p-1 rounded-xl">
@@ -56,8 +56,9 @@ const PlanningView: React.FC = () => {
          </div>
        </div>
 
-       <div className="flex-1 overflow-y-auto">
-          <div className="p-6 pb-44 space-y-6">
+       {/* Content Area */}
+       <div className="flex-1 overflow-y-auto relative z-10">
+          <div className="p-6 space-y-6">
             {/* Progress Bar */}
             <div>
                 <div className="flex justify-between text-xs font-semibold text-gray-500 mb-2">
@@ -104,6 +105,9 @@ const PlanningView: React.FC = () => {
                 <i className="fa-solid fa-plus mr-2"></i> 新增項目
                 </button>
             </div>
+            
+            {/* Explicit Spacer for Bottom Tab Bar */}
+            <div className="h-32 w-full"></div>
          </div>
        </div>
     </div>
