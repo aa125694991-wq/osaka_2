@@ -6,8 +6,8 @@ import ExpenseView from './views/ExpenseView';
 import PlanningView from './views/PlanningView';
 
 // Firebase Auth
-import { auth } from './services/firebase';
-import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+// Updated import to use the exports from services/firebase to avoid direct import errors
+import { auth, onAuthStateChanged, signInAnonymously } from './services/firebase';
 
 const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<ViewTab>('schedule');
@@ -15,13 +15,13 @@ const App: React.FC = () => {
 
   // 初始化：自動進行匿名登入
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user: any) => {
       if (user) {
         console.log("User is signed in:", user.uid);
         setIsAuthenticated(true);
       } else {
         console.log("Attempting to sign in anonymously...");
-        signInAnonymously(auth).catch((error) => {
+        signInAnonymously(auth).catch((error: any) => {
           // 如果是 "admin-restricted-operation"，代表 Firebase Console 沒開匿名登入
           // 但如果使用者的 Firestore Rules 設為 public，這其實不影響運作，所以改用 warn 提示即可
           if (error.code === 'auth/admin-restricted-operation') {
